@@ -15,9 +15,13 @@ import android.widget.Toast
 class MainActivity : Activity() {
 
     private lateinit var status: TextView
-    private lateinit var etTaps: EditText
-    private lateinit var etInterval: EditText
-    private lateinit var etWait: EditText
+    private lateinit var etTapsMin: EditText
+    private lateinit var etTapsMax: EditText
+    private lateinit var etIntMin: EditText
+    private lateinit var etIntMax: EditText
+    private lateinit var etWaitMin: EditText
+    private lateinit var etWaitMax: EditText
+    private lateinit var etSpread: EditText
     private lateinit var etMax: EditText
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -38,6 +42,26 @@ class MainActivity : Activity() {
         }
         root.addView(et)
         return et
+    }
+
+    private fun addRange(root: LinearLayout, label: String, min: Int, max: Int): Pair<EditText, EditText> {
+        addLabel(root, label)
+        val row = LinearLayout(this)
+        row.orientation = LinearLayout.HORIZONTAL
+
+        fun field(dica: String, v: Int): EditText {
+            val et = EditText(this)
+            et.inputType = InputType.TYPE_CLASS_NUMBER
+            et.setText(v.toString())
+            et.hint = dica
+            row.addView(et, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            return et
+        }
+
+        val a = field("mín", min)
+        val b = field("máx", max)
+        root.addView(row)
+        return Pair(a, b)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -76,9 +100,25 @@ class MainActivity : Activity() {
             setPadding(0, dp(4), 0, 0)
         })
 
-        etTaps = addField(root, "Quantidade de toques em cada vídeo", c.taps)
-        etInterval = addField(root, "Intervalo entre os toques (milissegundos)", c.tapIntervalMs)
-        etWait = addField(root, "Espera depois de rolar para o próximo vídeo (milissegundos)", c.waitAfterSwipeMs)
+        root.addView(TextView(this).apply {
+            text = "Cada faixa abaixo é sorteada a cada vídeo (ou a cada toque, no caso do intervalo)."
+            textSize = 12f
+            setPadding(0, dp(16), 0, 0)
+        })
+
+        val taps = addRange(root, "Quantidade de toques por vídeo (mín e máx)", c.tapsMin, c.tapsMax)
+        etTapsMin = taps.first
+        etTapsMax = taps.second
+
+        val inter = addRange(root, "Intervalo entre os toques, em milissegundos (mín e máx)", c.intervalMin, c.intervalMax)
+        etIntMin = inter.first
+        etIntMax = inter.second
+
+        val wait = addRange(root, "Espera depois de rolar para o próximo vídeo, em milissegundos (mín e máx)", c.waitMin, c.waitMax)
+        etWaitMin = wait.first
+        etWaitMax = wait.second
+
+        etSpread = addField(root, "Variação do ponto de toque, em pixels ao redor do centro (0 = sempre no mesmo ponto)", c.spread)
         etMax = addField(root, "Quantidade de vídeos (0 = infinito)", c.maxVideos)
 
         root.addView(Button(this).apply {
@@ -121,13 +161,17 @@ class MainActivity : Activity() {
             "Serviço de acessibilidade: INATIVO"
     }
 
+    private fun num(e: EditText, def: Int): Int = e.text.toString().toIntOrNull() ?: def
+
     private fun save() {
-        val cfg = Config(
-            (etTaps.text.toString().toIntOrNull() ?: 30).coerceAtLeast(1),
-            (etInterval.text.toString().toIntOrNull() ?: 120).coerceAtLeast(50),
-            (etWait.text.toString().toIntOrNull() ?: 1500).coerceAtLeast(200),
-            (etMax.text.toString().toIntOrNull() ?: 0).coerceAtLeast(0)
-        )
-        Config.save(this, cfg)
+        val tapsMin = num(etTapsMin, 30).coerceAtLeast(1)
+        val tapsMax = num(etTapsMax, 50).coerceAtLeast(tapsMin)
+        val intMin = num(etIntMin, 120).coerceAtLeast(50)
+        val intMax = num(etIntMax, 500).coerceAtLeast(intMin)
+        val waitMin = num(etWaitMin, 1500).coerceAtLeast(200)
+        val waitMax = num(etWaitMax, 3500).coerceAtLeast(waitMin)
+        val spread = num(etSpread, 15).coerceIn(0, 200)
+        val max = num(etMax, 0).coerceAtLeast(0)
+        Config.save(this, Config(tapsMin, tapsMax, intMin, intMax, waitMin, waitMax, spread, max))
     }
 }

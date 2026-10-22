@@ -195,18 +195,19 @@ class AutoService : AccessibilityService() {
             var videos = 0
             while (running && (cfg.maxVideos == 0 || videos < cfg.maxVideos)) {
                 videos++
-                for (i in 1..cfg.taps) {
+                val taps = rnd(cfg.tapsMin, cfg.tapsMax)
+                for (i in 1..taps) {
                     if (!running) break
-                    val x = w / 2f + rnd(-40, 40)
-                    val y = h / 2f + rnd(-60, 60)
+                    val x = w / 2f + rnd(-cfg.spread, cfg.spread)
+                    val y = h / 2f + rnd(-cfg.spread, cfg.spread)
                     tap(x, y)
-                    setStatus("Vídeo $videos • $i/${cfg.taps}")
-                    sleepJitter(cfg.tapIntervalMs)
+                    setStatus("Vídeo $videos • $i/$taps")
+                    Thread.sleep(rnd(cfg.intervalMin, cfg.intervalMax).toLong())
                 }
                 if (!running) break
                 swipeUp(w, h)
                 setStatus("Vídeo $videos • rolando")
-                sleepJitter(cfg.waitAfterSwipeMs)
+                Thread.sleep(rnd(cfg.waitMin, cfg.waitMax).toLong())
             }
         } catch (_: InterruptedException) {
         } finally {
@@ -216,11 +217,10 @@ class AutoService : AccessibilityService() {
         }
     }
 
-    private fun rnd(min: Int, max: Int): Int = min + (Math.random() * (max - min)).toInt()
-
-    private fun sleepJitter(ms: Int) {
-        val v = ms * (0.75 + Math.random() * 0.5)
-        Thread.sleep(v.toLong())
+    // sorteia um número inteiro entre min e max (inclusive)
+    private fun rnd(min: Int, max: Int): Int {
+        if (max <= min) return min
+        return min + (Math.random() * (max - min + 1)).toInt()
     }
 
     private fun tap(x: Float, y: Float) {
